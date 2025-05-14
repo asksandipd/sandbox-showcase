@@ -1,8 +1,9 @@
+
 "use client";
 
 import type { Project } from '@/types/project';
 import { getProjects } from '@/data/mock-projects';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Sidebar,
   SidebarProvider,
@@ -13,34 +14,28 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarFooter,
-  SidebarRail, // Added SidebarRail
+  SidebarRail,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import ProjectIconDisplay from './project-icon-display';
 import ReadmeViewer from './readme-viewer';
-import { LayoutGrid, SidebarOpen, SidebarClose, Home, Search, Settings, Moon, Sun } from 'lucide-react';
+import { LayoutGrid, SidebarOpen, SidebarClose, Home, Search, Settings, Moon, Sun, Loader2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 
+const ITEMS_PER_PAGE = 8; // Number of items to load per "page" for infinite scroll, e.g. 1 row of 8
 
-// Helper to manage theme, adapted from typical next-themes setup
 const useAppTheme = () => {
   const [mounted, setMounted] = useState(false);
-  // const { theme, setTheme } = useTheme(); // This would require next-themes provider in layout.tsx
-  // Simplified theme toggle for now if next-themes is not part of the base scaffold
   const [currentTheme, setCurrentTheme] = useState('dark');
 
   useEffect(() => {
     setMounted(true);
     const root = window.document.documentElement;
-    const initialColorValue = root.style.getPropertyValue('--initial-color-mode');
-    if (initialColorValue === 'light' || initialColorValue === 'dark') {
-      setCurrentTheme(initialColorValue);
-    }
-    // In a real setup with next-themes:
-    // const storedTheme = localStorage.getItem('theme') || 'dark';
-    // setCurrentTheme(storedTheme);
-    // document.documentElement.className = storedTheme;
+    const initialColorValue = root.style.getPropertyValue('--initial-color-mode') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setCurrentTheme(initialColorValue as string);
+    document.documentElement.classList.toggle('dark', initialColorValue === 'dark');
+    document.documentElement.classList.toggle('light', initialColorValue === 'light');
   }, []);
   
   const toggleTheme = () => {
@@ -49,8 +44,6 @@ const useAppTheme = () => {
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
     document.documentElement.classList.toggle('light', newTheme === 'light');
     document.documentElement.style.setProperty('--initial-color-mode', newTheme);
-    // In a real setup with next-themes:
-    // setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   return { theme: currentTheme, toggleTheme, mounted };
@@ -58,56 +51,124 @@ const useAppTheme = () => {
 
 
 const ShowcaseLayout: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [displayedProjects, setDisplayedProjects] = useState<Project[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'detail'>('grid');
-  const [sidebarCompact, setSidebarCompact] = useState(true); // For text in expanded sidebar
+  const [sidebarCompact, setSidebarCompact] = useState(true);
   const { theme, toggleTheme, mounted } = useAppTheme();
 
-  // State for controlling SidebarProvider's open/closed status via key and defaultOpen prop
   const [sidebarProviderKey, setSidebarProviderKey] = useState(0);
   const [initialSidebarOpen, setInitialSidebarOpen] = useState(true);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setProjects(getProjects());
+    const projectsData = getProjects();
+    setAllProjects(projectsData);
+    setDisplayedProjects(projectsData.slice(0, ITEMS_PER_PAGE));
+    setCurrentPage(1);
+    setHasMore(projectsData.length > ITEMS_PER_PAGE);
   }, []);
+
+  const loadMoreProjects = useCallback(() => {
+    if (isLoadingMore || !hasMore || viewMode !== 'grid') return;
+
+    setIsLoadingMore(true);
+    const nextPage = currentPage + 1;
+    const nextItemsStart = currentPage * ITEMS_PER_PAGE;
+    const nextItemsEnd = nextPage * ITEMS_PER_PAGE;
+    
+    // Simulate delay for loading
+    setTimeout(() => {
+      const newProjects = allProjects.slice(nextItemsStart, nextItemsEnd);
+      setDisplayedProjects(prev => [...prev, ...newProjects]);
+      setCurrentPage(nextPage);
+      setHasMore(allProjects.length > nextItemsEnd);
+      setIsLoadingMore(false);
+    }, 500);
+  }, [isLoadingMore, hasMore, currentPage, allProjects, viewMode]);
+
+  useEffect(() => {
+    const scrollableElement = scrollContainerRef.current;
+    const handleScroll = () => {
+      if (scrollableElement) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
+        // Load more when 200px near the bottom
+        if (scrollHeight - scrollTop - clientHeight < 200 && !isLoadingMore && hasMore && viewMode === 'grid') {
+          loadMoreProjects();
+        }
+      }
+    };
+
+    if (scrollableElement && viewMode === 'grid') {
+      scrollableElement.addEventListener('scroll', handleScroll);
+    }
+    return () => {
+      if (scrollableElement) {
+        scrollableElement.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [isLoadingMore, hasMore, loadMoreProjects, viewMode]);
+
 
   const handleGridProjectSelect = (projectId: string) => {
     setViewMode('detail');
     setSelectedProjectIds([projectId]);
-    setInitialSidebarOpen(false); // Request sidebar to start collapsed (thin)
-    setSidebarProviderKey(prev => prev + 1); // Force remount of SidebarProvider
-    setSidebarCompact(true); // Ensure internal items are compact style
+    setInitialSidebarOpen(false); 
+    setSidebarProviderKey(prev => prev + 1); 
+    setSidebarCompact(true); 
   };
 
   const handleSidebarProjectSelect = (projectId: string) => {
     setSelectedProjectIds([projectId]);
-    // When selecting from sidebar, don't change sidebar's open/closed state
-    // It should retain its current global open state (thin or wide)
   };
 
   const switchToGridView = () => {
     setViewMode('grid');
-    setInitialSidebarOpen(true); // Reset for potential next switch to detail
-    // setSidebarProviderKey(prev => prev + 1); // Force remount
+    setInitialSidebarOpen(true);
+    // Reset displayed projects to initial page for grid view
+    setDisplayedProjects(allProjects.slice(0, ITEMS_PER_PAGE));
+    setCurrentPage(1);
+    setHasMore(allProjects.length > ITEMS_PER_PAGE);
   };
 
   const activeProjects = useMemo(() => {
-    return projects.filter(p => selectedProjectIds.includes(p.id));
-  }, [projects, selectedProjectIds]);
+    return allProjects.filter(p => selectedProjectIds.includes(p.id));
+  }, [allProjects, selectedProjectIds]);
 
 
   const renderGrid = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 md:gap-6 p-6 md:p-10 max-w-6xl mx-auto place-items-center">
-      {projects.map((project) => (
-        <ProjectIconDisplay
-          key={project.id}
-          project={project}
-          onClick={handleGridProjectSelect} // Use specific handler for grid clicks
-          sizeClasses="w-16 h-16 md:w-20 md:h-20"
-        />
-      ))}
+    <div className="flex flex-col items-center w-full"> {/* Wrapper for centering grid and loader */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 md:gap-6 p-6 md:p-10 max-w-7xl w-full place-items-center">
+        {displayedProjects.map((project) => (
+          <ProjectIconDisplay
+            key={project.id} 
+            project={project}
+            onClick={handleGridProjectSelect}
+            sizeClasses="w-16 h-16 md:w-20 md:h-20"
+          />
+        ))}
+      </div>
+      {isLoadingMore && (
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+      {!hasMore && displayedProjects.length > 0 && viewMode === 'grid' && (
+        <p className="col-span-full text-center text-muted-foreground py-4">No more projects to load.</p>
+      )}
+       {/* Placeholder if no projects initially and not loading - might not be hit with current logic */}
+      {displayedProjects.length === 0 && !isLoadingMore && !hasMore && viewMode === 'grid' && (
+         <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-10">
+          <LayoutGrid size={64} className="mb-4" />
+          <p className="text-xl">No projects found.</p>
+        </div>
+      )}
     </div>
   );
 
@@ -126,7 +187,8 @@ const ShowcaseLayout: React.FC = () => {
 
   return (
     <SidebarProvider key={sidebarProviderKey} defaultOpen={initialSidebarOpen}>
-      <div className="flex h-screen bg-background text-foreground">
+      {/* Root div for ShowcaseLayout, takes full height from parent */}
+      <div className="flex h-full bg-background text-foreground"> 
         {viewMode === 'detail' && (
           <Sidebar collapsible="icon" className="border-r border-sidebar-border shadow-lg">
             <SidebarHeader className="p-2 flex justify-between items-center">
@@ -134,15 +196,10 @@ const ShowcaseLayout: React.FC = () => {
                   <Home size={24} className="text-primary" />
                   <h1 className="text-xl font-semibold">Sandbox Showcase</h1>
               </div>
-              {/* SidebarTrigger is usually for expanding/collapsing the SidebarProvider state.
-                  It's hidden when collapsible=icon and sidebar is collapsed by SidebarRail.
-                  The SidebarRail itself handles toggling the SidebarProvider state.
-              */}
               <SidebarTrigger className="group-data-[collapsible=icon]:hidden" />
             </SidebarHeader>
             
-            {/* Button to toggle compact/expanded list text *within* an open (16rem) sidebar */}
-            <div className="p-2 group-data-[collapsible=icon]:hidden"> {/* Hidden if sidebar is icon-only (3rem) */}
+            <div className="p-2 group-data-[collapsible=icon]:hidden">
               <Button variant="ghost" onClick={() => setSidebarCompact(!sidebarCompact)} className="w-full justify-start">
                 {sidebarCompact ? <SidebarOpen size={18} className="mr-2"/> : <SidebarClose size={18} className="mr-2"/>}
                 {sidebarCompact ? "Expand List" : "Compact List"}
@@ -151,14 +208,12 @@ const ShowcaseLayout: React.FC = () => {
 
             <SidebarContent>
               <SidebarMenu>
-                {projects.map((project) => (
+                {allProjects.map((project) => (
                   <SidebarMenuItem key={project.id}>
                       <ProjectIconDisplay
                           project={project}
-                          onClick={handleSidebarProjectSelect} // Use specific handler for sidebar clicks
+                          onClick={handleSidebarProjectSelect}
                           isActive={selectedProjectIds.includes(project.id)}
-                          // If sidebar is globally collapsed (initialSidebarOpen=false), items must be compact.
-                          // If sidebar is globally open (initialSidebarOpen=true), items respect sidebarCompact toggle.
                           isCompact={!initialSidebarOpen || sidebarCompact}
                           sizeClasses="w-8 h-8"
                       />
@@ -188,11 +243,11 @@ const ShowcaseLayout: React.FC = () => {
                 <span className="group-data-[collapsible=icon]:hidden">Settings</span>
               </Button>
             </SidebarFooter>
-            <SidebarRail /> {/* Added SidebarRail for expanding a collapsed icon sidebar */}
+            <SidebarRail />
           </Sidebar>
         )}
         
-        <SidebarInset className={cn("flex-1 overflow-auto", viewMode === 'grid' && "w-full")}>
+        <SidebarInset ref={scrollContainerRef} className={cn("flex-1 overflow-auto", viewMode === 'grid' && "w-full")}>
           {viewMode === 'grid' ? renderGrid() : renderDetailView()}
         </SidebarInset>
       </div>
