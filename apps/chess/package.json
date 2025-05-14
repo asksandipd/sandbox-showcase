@@ -1,0 +1,12 @@
+{
+  "name": "chess",
+  "version": "1.0.0",
+  "description": "Classic Chess game",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "echo "Implement start script""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
