@@ -82,13 +82,60 @@ export default {
   				to: {
   					height: '0'
   				}
-  			}
+  			},
+        'animated-gradient': {
+          '0%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
+        },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
-  		}
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+        'animated-gradient': 'animated-gradient 15s ease infinite',
+  		},
+      typography: (theme: (arg0: string) => any) => ({
+        DEFAULT: {
+          css: {
+            color: theme('colors.foreground'),
+            a: {
+              color: theme('colors.primary.DEFAULT'),
+              '&:hover': {
+                color: theme('colors.accent.DEFAULT'),
+              },
+            },
+            h1: { color: theme('colors.foreground')},
+            h2: { color: theme('colors.foreground')},
+            h3: { color: theme('colors.foreground')},
+            h4: { color: theme('colors.foreground')},
+            strong: { color: theme('colors.foreground')},
+            code: { backgroundColor: theme('colors.muted.DEFAULT'), color: theme('colors.muted.foreground'), padding: '0.2em 0.4em', borderRadius: '0.25rem'},
+            pre: { backgroundColor: theme('colors.muted.DEFAULT'), color: theme('colors.muted.foreground')},
+            blockquote: { color: theme('colors.muted.foreground'), borderLeftColor: theme('colors.border')},
+          }
+        },
+        sm: {
+           css: {
+            code: { padding: '0.15em 0.3em' },
+           }
+        },
+        invert: { // For dark mode, if needed separately, though above uses CSS vars
+          css: {
+            color: theme('colors.foreground'),
+            a: {
+              color: theme('colors.primary.DEFAULT'),
+              '&:hover': {
+                color: theme('colors.accent.DEFAULT'),
+              },
+            },
+            // ... other dark mode overrides for prose if not handled by default theme
+          }
+        }
+      }),
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require('@tailwindcss/typography'),
+  ],
 } satisfies Config;
