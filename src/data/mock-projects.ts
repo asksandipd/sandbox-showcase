@@ -1,11 +1,12 @@
+
 import type { Project } from '@/types/project';
 
 const projects: Project[] = [
   {
     id: 'tetris',
     name: 'Tetris',
-    iconUrl: 'https://picsum.photos/seed/tetris/40/40',
-    demoGifUrl: 'https://picsum.photos/seed/tetris-demo/400/300',
+    iconUrl: 'https://picsum.photos/seed/tetris/40/40', // Placeholder, will be overwritten
+    demoGifUrl: 'https://picsum.photos/seed/tetris-demo/400/300', // Placeholder, will be overwritten
     readmeContent: `
 # Tetris Clone
 
@@ -42,8 +43,8 @@ Visit \`http://localhost:3001\` (configurable).
   {
     id: 'gomoku',
     name: 'Gomoku AI',
-    iconUrl: 'https://picsum.photos/seed/gomoku/40/40',
-    demoGifUrl: 'https://picsum.photos/seed/gomoku-demo/400/300',
+    iconUrl: 'https://picsum.photos/seed/gomoku/40/40', // Placeholder, will be overwritten
+    demoGifUrl: 'https://picsum.photos/seed/gomoku-demo/400/300', // Placeholder, will be overwritten
     readmeContent: `
 # Gomoku (Five in a Row)
 
@@ -80,8 +81,8 @@ Requires Python and Pygame installed.
   {
     id: 'tic-tac-toe',
     name: 'Tic-Tac-Toe Next.js',
-    iconUrl: 'https://picsum.photos/seed/tictactoe/40/40',
-    demoGifUrl: 'https://picsum.photos/seed/tictactoe-demo/400/300',
+    iconUrl: 'https://picsum.photos/seed/tictactoe/40/40', // Placeholder, will be overwritten
+    demoGifUrl: 'https://picsum.photos/seed/tictactoe-demo/400/300', // Placeholder, will be overwritten
     readmeContent: `
 # Tic-Tac-Toe
 
@@ -117,8 +118,8 @@ Visit \`http://localhost:3002\`.
   {
     id: 'chess',
     name: 'WASM Chess Engine',
-    iconUrl: 'https://picsum.photos/seed/chess/40/40',
-    demoGifUrl: 'https://picsum.photos/seed/chess-demo/400/300',
+    iconUrl: 'https://picsum.photos/seed/chess/40/40', // Placeholder, will be overwritten
+    demoGifUrl: 'https://picsum.photos/seed/chess-demo/400/300', // Placeholder, will be overwritten
     readmeContent: `
 # WASM Chess
 
@@ -161,7 +162,7 @@ export const getProjects = (): Project[] => {
   // Ensure iconUrl and demoGifUrl are unique for picsum.photos
   return projects.map(p => ({
     ...p,
-    iconUrl: \`https://picsum.photos/seed/\${p.id}-icon/40/40\`,
-    demoGifUrl: \`https://picsum.photos/seed/\${p.id}-demo/400/300\`
+    iconUrl: `https://picsum.photos/seed/${p.id}-icon/40/40`,
+    demoGifUrl: `https://picsum.photos/seed/${p.id}-demo/400/300`
   }));
 };
